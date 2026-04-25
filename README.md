@@ -53,7 +53,7 @@ The agent begins flat and at each decision time can:
 
 The implementation uses a **fixed trade size** relative to the LMSR liquidity parameter `b`. This keeps the action space discrete and stable for a proof-of-concept RL system.
 
-The market maker follows the **logarithmic market scoring rule**. In the binary case, the market state can be represented using a single net YES inventory variable \(Q_t\), and the public YES probability is the corresponding LMSR quote. Your underlying project note uses exactly this representation and frames the agent’s economics through execution cost and liquidation value under LMSR. :contentReference[oaicite:1]{index=1}
+The market maker follows the **logarithmic market scoring rule**. In the binary case, the market state can be represented using a single net YES inventory variable \(Q_t\), and the public YES probability is the corresponding LMSR quote. Your underlying project note uses exactly this representation and frames the agent’s economics through execution cost and liquidation value under LMSR.
 
 ---
 
@@ -79,7 +79,7 @@ That creates a natural **nested stopping structure**:
 - invested regime
   compare holding versus exiting
 
-The project note formalises this structure explicitly through flat, long-YES, and long-NO value functions and corresponding Bellman recursions. :contentReference[oaicite:2]{index=2}
+The project note formalises this structure explicitly through flat, long-YES, and long-NO value functions and corresponding Bellman recursions.
 
 This matters because the central object is not merely whether the event resolves YES or NO. The central object is the **continuation value of waiting** versus the **realised value of trading now**.
 
