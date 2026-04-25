@@ -1,0 +1,98 @@
+seed: 20260424
+horizon_days: 60
+time_step_days: 1.0
+
+initial_state:
+  x0: 0.0
+  g0: 0.0
+  noise_pressure0: 0.0
+  q0: 0.0
+
+terminal:
+  epsilon: 0.02
+  yes_probability: 0.5
+
+terminal_conviction:
+  alpha_yes: 6.0
+  beta_yes: 2.0
+  alpha_no: 2.0
+  beta_no: 6.0
+
+anchor_schedule:
+  schedule_type: linear
+  lambda_start: 0.05
+  lambda_end: 1.0
+  lambda_power: 2.0
+
+regimes:
+  theta_bar: [-0.75, 0.0, 0.75]
+  initial_probs: [0.25, 0.50, 0.25]
+  transition_matrix:
+    - [0.90, 0.08, 0.02]
+    - [0.05, 0.90, 0.05]
+    - [0.02, 0.08, 0.90]
+
+latent_belief:
+  kappa: 0.06
+  sigma: 0.22
+
+jump:
+  lambda_j: 0.06
+  eta_0: 0.05
+  eta_1: 0.0015
+  sigma_j: 0.35
+
+private_signal:
+  sigma_sig: 0.45
+
+execution_pressure:
+  rho: 0.82
+  sigma_g: 0.05
+
+informed_flow:
+  pi_min_inf: 0.35
+  pi_max_inf: 0.85
+  gamma_pi: 5.0
+  beta_inf: 6.0
+  m_inf: 2.0
+
+noise_flow:
+  pi_noise: 0.30
+  phi_noise_pressure: 0.55
+  sigma_noise_pressure: 0.35
+  beta_noise: 2.0
+  m_noise: 0.001 #1.5 is a good value. Want to remove noise for now just to check behaviour. 
+
+lmsr:
+  b: 20.0
+
+trade:
+  allow_reentry: false
+  trade_size_policy_name: default_fraction_of_b
+  terminate_on_exit: false
+
+fees:
+  fixed_fee: 0.05
+  proportional_fee_bps: 5.0
+
+reward:
+  reward_mode: terminal_net_pnl
+  inactivity_penalty: 0.0
+  invalid_action_penalty: 0.01
+
+belief_features:
+  enabled: false
+  mode: none
+
+features:
+  include_public_probability: true
+  include_same_day_flow: true
+  include_time_to_resolution: true
+  include_position_flag: true
+  include_position_side: true
+  include_cash_pnl: true
+  include_entry_probability: true
+  include_entry_costs_when_flat: true
+  include_unwind_value_when_invested: true
+  include_belief_features: false
+  explicit_dead_state: true

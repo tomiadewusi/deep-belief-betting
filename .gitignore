@@ -1,0 +1,34 @@
+# python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# virtual environments
+dbb/
+.venv/
+venv/
+env/
+
+# notebook checkpoints
+.ipynb_checkpoints/
+
+# test and coverage artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# editor files
+.vscode/
+.idea/
+.DS_Store
+
+# local env files
+.env
+.env.*
