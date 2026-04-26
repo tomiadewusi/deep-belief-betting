@@ -68,7 +68,10 @@ def compute_ppo_minibatch_loss(
     '''
     log_probs, entropy = masked_log_prob_and_entropy(logits, action_mask, actions, device)
 
-    ratio = (log_probs - old_log_probs).exp()
+    old_logp = old_log_probs.detach()
+    advantages = advantages.detach()
+    returns = returns.detach()
+    ratio = (log_probs - old_logp).exp()
     clip_ratio = ratio.clamp(1-clip_range, 1+clip_range)
     policy_loss = -torch.min(ratio * advantages, clip_ratio * advantages).mean()
     value_loss = F.mse_loss(new_values, returns)

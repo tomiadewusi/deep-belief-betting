@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 import yaml
 
-from agent_training.training_config import TrainingConfig
+from deep_belief_betting.agent_training.training_config import TrainingConfig
 
 
 def create_run_id(run_name: str) -> str:
