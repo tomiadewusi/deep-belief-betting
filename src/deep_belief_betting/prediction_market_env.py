@@ -213,7 +213,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
             self._belief_vector = np.zeros(self.belief_dim, dtype=np.float32)
 
         obs = self._build_observation()
-        info = {"action_mask": self.broker.action_mask().copy()}
+        info = {"action_mask": self.broker.action_mask().copy(), "realised_cash_pnl": 0.0}
         return obs, info
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:

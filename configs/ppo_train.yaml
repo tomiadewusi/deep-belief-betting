@@ -27,3 +27,4 @@ ppo_epochs: 4
 belief_on: false
 belief_dim: 0
 belief_checkpoint_path: ""
+use_tensorboard: true

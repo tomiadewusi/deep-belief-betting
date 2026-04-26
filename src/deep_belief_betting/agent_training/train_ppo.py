@@ -2,22 +2,25 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Any, Optional
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
+from torch.utils.tensorboard import SummaryWriter
 
 from deep_belief_betting.env_factory import make_vector_env
 from deep_belief_betting.parameters import Parameters
-from deep_belief_betting.agent_training.algorithms.ppo import compute_gae,compute_ppo_minibatch_loss
+from deep_belief_betting.agent_training.algorithms.ppo import compute_gae, compute_ppo_minibatch_loss, masked_log_prob_and_entropy
 
 from deep_belief_betting.agent_training.device import resolve_device
 from deep_belief_betting.agent_training.policy.mlp_actor_critic import ActorCritic
 from deep_belief_betting.agent_training.run_layout import create_run_dir
 from deep_belief_betting.agent_training.training_config import TrainingConfig, load_training_config
 
+import json
 
 def set_seed(seed: int) -> None:
     np.random.seed(seed)
@@ -36,17 +39,33 @@ def _masked_action_sample(
     log_probs = dist.log_prob(actions)
     return actions, log_probs
 
+def log_dict_pretty(log_dict: dict[str, float]) -> str:
+    rounded = {k: round(v, 5) for k, v in log_dict.items()}
+    return json.dumps(rounded, sort_keys=True, separators=(", ", ": "))
+
+def log_dict_to_tensorboard(writer: SummaryWriter, step: int, log_dict: dict[str, float]) -> None:
+    for key, value in log_dict.items():
+        writer.add_scalar(f"metrics/{key}", value, step)
+    writer.flush()
+
+def log_writer(run_dir: Path, use_tb: bool) -> Optional[Any]:
+    if not use_tb:
+        return None
+    tb = run_dir / "tb"
+    tb.mkdir(exist_ok=True, parents=True)
+    return SummaryWriter(log_dir=str(tb))
 
 def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
     set_seed(cfg.seed)
     run_dir = create_run_dir(cfg.log_dir, cfg.run_name, cfg)
-    print(f"run_dir={run_dir}")
+    writer = log_writer(run_dir, cfg.use_tensorboard)
+    if writer is not None:
+        print(f"TensorBoard: tensorboard --logdir ./{run_dir!s}/tb")
 
     params = Parameters.from_yaml(cfg.world_yaml_base_path)
     belief_dim = int(cfg.belief_dim) if cfg.belief_on else 0
-    env = make_vector_env(params, cfg.num_envs, belief_dim=belief_dim)
-
     try:
+        env = make_vector_env(params, cfg.num_envs, belief_dim=belief_dim)
         obs_dim = int(env.single_observation_space.shape[0])
         num_actions = int(env.single_action_space.n)
 
@@ -66,15 +85,15 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
 
         #number of policy updates
         for update_idx in range(cfg.num_updates):
-            rewards, dones, values, old_log_probs, actions, masks, observations = [], [], [], [], [], [], []
-            
+            rewards, dones, values, old_log_probs, actions, masks, observations, pnl_steps = [], [], [], [], [], [], [], []
+
             #actual policy rollout for experience collection - happens in parallel across envs
             for i in range(cfg.rollout_steps):
                 obs_t = torch.as_tensor(np.asarray(obs, dtype=np.float32), device=device)
                 mask_t = torch.as_tensor(np.asarray(infos["action_mask"], dtype=np.int64), device=device)
 
+                logits, vals = model(obs_t)
                 with torch.no_grad():
-                    logits, vals = model(obs_t)
                     action_t, logprobs_t = _masked_action_sample(logits, mask_t)
 
                 observations.append(np.asarray(obs, dtype=np.float32).copy())
@@ -89,7 +108,9 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
                 dones.append(torch.as_tensor(new_dones, device=device, dtype=torch.float32))
                 rewards.append(torch.as_tensor(new_rewards, device=device, dtype=torch.float32))
                 obs, infos = new_observations, new_infos
-
+                pnl = np.where(new_dones > 0, new_infos["realised_cash_pnl"], 0)
+                pnl_steps.append(pnl)
+            
             #now combine up the experience into tensors for batch processinglater
             all_rewards = torch.stack(rewards, dim=0).transpose(0, 1)
             all_dones = torch.stack(dones, dim=0).transpose(0, 1)
@@ -137,10 +158,17 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
             old_log_probs_mini = all_old_log_probs.reshape(batch_size)
             advantages_mini = advantages.reshape(batch_size)
             returns_mini = returns.reshape(batch_size)
-
-            log_dict: dict[str, float] = {"policy_loss": 0.0, "value_loss": 0.0, "entropy_loss": 0.0}
-            
-            #now to create minibatches, get loss, and backwards
+            final_logger: dict[str, float] = {
+                "policy_loss": 0.0, 
+                "value_loss": 0.0, 
+                "entropy_loss": 0.0, 
+                "total_loss": 0.0,
+                "denominator_for_avg": 0,
+                "kl_div": 0.0,
+                "grad_norm_total": 0.0, #this one specifically to see if the gradient clipping is actually helpful
+                "pnl_avg": 0.0
+            }
+             #now to create minibatches, get loss, and backwards
             for _ in range(cfg.ppo_epochs):
                 sample = torch.randperm(batch_size, device=device)
                 for s in range(0, batch_size, minibatch_size):
@@ -153,6 +181,11 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
                     b_returns = returns_mini.index_select(0, idx)
 
                     logits, new_vals = model(b_obs)
+                    new_log_prob, _ = masked_log_prob_and_entropy(
+                        logits, b_masks, b_actions, device
+                    )
+                    final_logger["kl_div"] += float((b_old_log_probs - new_log_prob.detach()).mean())
+
                     loss, log_dict = compute_ppo_minibatch_loss(
                         logits,
                         b_old_log_probs,
@@ -166,22 +199,40 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
                         cfg.entropy_coef,
                         device,
                     )
+                    final_logger["policy_loss"] += log_dict["policy_loss"]
+                    final_logger["value_loss"] += log_dict["value_loss"]
+                    final_logger["entropy_loss"] += log_dict["entropy_loss"]
+                    final_logger["total_loss"] += float(loss)
+                    final_logger["denominator_for_avg"] += 1
                     optimizer.zero_grad()
                     loss.backward()
-                    nn.utils.clip_grad_norm_(model.parameters(), cfg.max_grad_norm) #scale dradients to be not too large
+                    gn = float(nn.utils.clip_grad_norm_(model.parameters(), cfg.max_grad_norm)) #clip dradients to be not too large
+                    final_logger["grad_norm_total"] += gn
                     optimizer.step()
 
+            final_logger["policy_loss"] /= final_logger["denominator_for_avg"]
+            final_logger["value_loss"] /= final_logger["denominator_for_avg"]
+            final_logger["entropy_loss"] /= final_logger["denominator_for_avg"]
+            final_logger["total_loss"] /= final_logger["denominator_for_avg"]
+            final_logger["kl_div"] /= final_logger["denominator_for_avg"]
+            final_logger["grad_norm_total"] /= final_logger["denominator_for_avg"]
+
             with torch.no_grad():
-                ret_mean = all_rewards.sum(dim=1).mean().item() #for logging
+                rew_mean = all_rewards.sum(dim=1).mean().item() #for logging
+
+            pnl_stack = np.stack(pnl_steps, axis=0)  # (T, n_envs)
+            dones = all_dones.T.float().cpu().numpy()  # (T, n_envs), all_dones is (n_envs, T)
             
+            #only want to keep pnl from when the episode is done, cuz then we have the actual pnl
+            pnl_resolved = pnl_stack[dones > 0]
+            final_logger["pnl_avg"] = pnl_resolved.mean()
+            step = update_idx
+
+            if writer is not None:
+                log_dict_to_tensorboard(writer, step, final_logger)
+
             if (update_idx + 1) % max(cfg.log_interval, 1) == 0:
-                print(
-                    f"update {update_idx + 1}/{cfg.num_updates} "
-                    f"mean_episode_sum_reward(rollout)={ret_mean:.4f} "
-                    f"policy={log_dict['policy_loss']:.4f} "
-                    f"value={log_dict['value_loss']:.4f} "
-                    f"entropy={log_dict['entropy_loss']:.4f}"
-                )
+                print(log_dict_pretty(final_logger))
             if (update_idx + 1) % max(cfg.save_interval, 1) == 0:
                 ck = run_dir / "checkpoints" / f"ppo_{update_idx + 1:06d}.pt"
                 torch.save(
@@ -195,7 +246,10 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
     except Exception as e:
         raise e
     finally:
-        env.close()
+        if writer is not None:
+            writer.close()
+        if env is not None:
+            env.close()
 
     return run_dir
 
@@ -222,4 +276,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

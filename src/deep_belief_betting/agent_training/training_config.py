@@ -41,6 +41,7 @@ class TrainingConfig:
     belief_on: bool
     belief_dim: int #length of belief vector
     belief_checkpoint_path: str #path to load belief model from
+    use_tensorboard: bool = True
 
 
 def load_training_config(config_path: str) -> TrainingConfig:
