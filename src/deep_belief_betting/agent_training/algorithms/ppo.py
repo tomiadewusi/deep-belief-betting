@@ -73,6 +73,8 @@ def compute_ppo_loss(
     log_probs, entropy = masked_log_prob_and_entropy(logits, action_mask, actions, device)
 
     advantages, returns = compute_gae(rewards, dones, values, next_values, gamma, gae_lambda, device)
+    advantages = advantages.detach()
+    returns = returns.detach()
 
     ratio = (log_probs - old_log_probs).exp()   
     clip_ratio = ratio.clamp(1-clip_range, 1+clip_range)
