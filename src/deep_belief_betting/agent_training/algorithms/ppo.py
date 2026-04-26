@@ -45,21 +45,17 @@ def compute_gae(rewards: torch.Tensor, dones: torch.Tensor, values: torch.Tensor
     return advantages, returns
 
 
-def compute_ppo_loss(
+def compute_ppo_minibatch_loss(
     logits: torch.Tensor,
     old_log_probs: torch.Tensor, 
     action_mask: torch.Tensor, 
     actions: torch.Tensor,
     new_values: torch.Tensor,
-    values: torch.Tensor,
+    advantages: torch.Tensor,
+    returns: torch.Tensor,
     clip_range: float,
     value_coef: float,
     entropy_coef: float,
-    gamma: float,
-    gae_lambda: float,
-    rewards: torch.Tensor,
-    dones: torch.Tensor,
-    next_values: torch.Tensor,
     device: torch.device,
 ) -> tuple[torch.Tensor, dict[str, float]]:
     '''
@@ -72,11 +68,7 @@ def compute_ppo_loss(
     '''
     log_probs, entropy = masked_log_prob_and_entropy(logits, action_mask, actions, device)
 
-    advantages, returns = compute_gae(rewards, dones, values, next_values, gamma, gae_lambda, device)
-    advantages = advantages.detach()
-    returns = returns.detach()
-
-    ratio = (log_probs - old_log_probs).exp()   
+    ratio = (log_probs - old_log_probs).exp()
     clip_ratio = ratio.clamp(1-clip_range, 1+clip_range)
     policy_loss = -torch.min(ratio * advantages, clip_ratio * advantages).mean()
     value_loss = F.mse_loss(new_values, returns)
