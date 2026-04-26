@@ -1,0 +1,29 @@
+seed: 20260426
+num_envs: 4
+num_updates: 50
+rollout_steps: 64
+num_minibatches: 8 #num_envs * rollout_steps must be divisible by num_minibatches
+
+device: auto
+log_dir: runs/ppo
+run_name: ppo
+save_interval: 10
+log_interval: 1
+
+world_yaml_base_path: configs/default.yaml
+
+hidden_dim: 64
+num_layers: 2
+lr: 0.0003
+max_grad_norm: 0.5
+
+gamma: 0.99
+gae_lambda: 0.95
+clip_range: 0.2
+entropy_coef: 0.0
+value_coef: 0.5
+ppo_epochs: 4
+
+belief_on: false
+belief_dim: 0
+belief_checkpoint_path: ""
