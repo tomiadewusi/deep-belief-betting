@@ -1,5 +1,3 @@
-
-
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -46,10 +44,7 @@ def train(cfg: SimpleNamespace) -> Architecture3:
             true_probs_batch = true_probs_batch.to(device)       # (B, T+1)
             B = prices_batch.shape[0]
 
-            # input_seq is built up step by step. At step i its shape is
-            # (B, i+1, 2): for j < i, the second coord is the model's earlier
-            # prediction p_j (kept in graph for BPTT); at j == i it's a fresh
-            # 0.5 placeholder.
+            
             input_seq = torch.empty(B, 0, 2, device=device)
             preds = []
 
@@ -63,15 +58,13 @@ def train(cfg: SimpleNamespace) -> Architecture3:
                 p_i, logit_i, _ = model(input_seq)               # (B,), (B,), _
                 preds.append((p_i, logit_i))
 
-                # Replace the placeholder at position i with the model's actual
-                # prediction p_i, so future steps see (price_i, p_i).
+                
                 if i < L_total - 1:
                     updated = input_seq.clone()
                     updated[:, i, 1] = p_i
                     input_seq = updated
 
-            # Stack predictions into (B, T+1) tensors and compute one BCE
-            # against the soft targets across all timesteps.
+            
             logits = torch.stack([lo for _, lo in preds], dim=1)         # (B, T+1)
             probs = torch.stack([p for p, _ in preds], dim=1)            # (B, T+1)
             loss = F.binary_cross_entropy_with_logits(logits, true_probs_batch)

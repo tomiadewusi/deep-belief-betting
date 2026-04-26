@@ -1,4 +1,3 @@
-
 import math
 from types import SimpleNamespace
 from typing import Tuple
