@@ -1,0 +1,31 @@
+# Architecture 3 training config
+# Edit values here; pass path with --config or rely on the default location.
+
+# --- data dimensions ---
+T: 31                  # input sequence length is T+1 = 32
+in_dim: 2              # (price, prev_prob)
+
+# --- transformer ---
+d_model: 128           # residual stream / attention width
+n_heads: 8
+n_layers: 4
+d_ff: 512
+dropout: 0.1
+
+# --- state z_t ---
+d_z: 64                # dimensionality of the state vector
+
+# --- decoder MLP ---
+d_dec_hidden: 128
+
+# --- training ---
+batch_size: 16
+rollout_len: 24
+truncate_steps: 8      # TBPTT chunk length
+lr: 0.0003
+weight_decay: 0.01
+grad_clip: 1.0
+n_epochs: 3
+steps_per_epoch: 200
+device: auto           # "auto" | "cuda" | "cpu"
+seed: 0
