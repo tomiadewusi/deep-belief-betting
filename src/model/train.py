@@ -2,7 +2,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
@@ -14,12 +13,7 @@ def train(cfg: SimpleNamespace) -> Architecture3:
     torch.manual_seed(cfg.seed)
     device = torch.device(cfg.device)
 
-    train_set = PriceDataset(
-        csv_path=cfg.data_path,
-        T=cfg.T,
-        price_cols_prefix=cfg.price_cols_prefix,
-        prob_cols_prefix=cfg.prob_cols_prefix,
-    )
+    train_set = PriceDataset(csv_path=cfg.data_path, T=cfg.T)
     loader = DataLoader(train_set, batch_size=cfg.batch_size,
                         shuffle=True, drop_last=True)
 
@@ -39,35 +33,19 @@ def train(cfg: SimpleNamespace) -> Architecture3:
     L_total = cfg.T + 1
 
     for epoch in range(cfg.n_epochs):
-        for prices_batch, true_probs_batch in loader:
-            prices_batch = prices_batch.to(device)               # (B, T+1)
-            true_probs_batch = true_probs_batch.to(device)       # (B, T+1)
-            B = prices_batch.shape[0]
+        for features_batch, targets_batch in loader:
+            features_batch = features_batch.to(device)       # (B, T+1, 2)
+            targets_batch = targets_batch.to(device)         # (B, T+1)
+            B = features_batch.shape[0]
 
-            
-            input_seq = torch.empty(B, 0, 2, device=device)
-            preds = []
-
+            logits = []
             for i in range(L_total):
-                new_slot = torch.stack([
-                    prices_batch[:, i],
-                    torch.full((B,), 0.5, device=device),
-                ], dim=-1).unsqueeze(1)                          # (B, 1, 2)
-                input_seq = torch.cat([input_seq, new_slot], dim=1)
+                x = features_batch[:, :i+1, :]               # (B, i+1, 2)
+                _, logit_i, _ = model(x)                      # (B,)
+                logits.append(logit_i)
 
-                p_i, logit_i, _ = model(input_seq)               # (B,), (B,), _
-                preds.append((p_i, logit_i))
-
-                
-                if i < L_total - 1:
-                    updated = input_seq.clone()
-                    updated[:, i, 1] = p_i
-                    input_seq = updated
-
-            
-            logits = torch.stack([lo for _, lo in preds], dim=1)         # (B, T+1)
-            probs = torch.stack([p for p, _ in preds], dim=1)            # (B, T+1)
-            loss = F.binary_cross_entropy_with_logits(logits, true_probs_batch)
+            logits = torch.stack(logits, dim=1)               # (B, T+1)
+            loss = F.binary_cross_entropy_with_logits(logits, targets_batch)
 
             opt.zero_grad(set_to_none=True)
             loss.backward()
@@ -76,7 +54,8 @@ def train(cfg: SimpleNamespace) -> Architecture3:
             sched.step()
 
             with torch.no_grad():
-                mae = (probs - true_probs_batch).abs().mean().item()
+                preds = torch.sigmoid(logits)
+                mae = (preds - targets_batch).abs().mean().item()
 
             global_step += 1
             if global_step % 20 == 0:
