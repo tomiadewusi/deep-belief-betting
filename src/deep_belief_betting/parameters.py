@@ -175,6 +175,13 @@ class FeatureConfig:
     include_belief_features: bool
     explicit_dead_state: bool
 
+@dataclass(frozen=True)
+class ObservationNormalizationConfig:
+    """Observation normalization controls."""
+
+    enabled: bool
+    clip_value: float
+
 
 @dataclass(frozen=True)
 class Parameters:
@@ -200,6 +207,7 @@ class Parameters:
     reward: RewardConfig
     belief_features: BeliefFeatureConfig
     features: FeatureConfig
+    observation_normalization: ObservationNormalizationConfig
 
     @property
     def num_steps(self) -> int:
@@ -269,6 +277,7 @@ class Parameters:
             "reward",
             "belief_features",
             "features",
+            "observation_normalization",
         }
         missing = required_top_keys.difference(raw)
         if missing:
@@ -373,6 +382,10 @@ class Parameters:
                 include_belief_features=bool(raw["features"]["include_belief_features"]),
                 explicit_dead_state=bool(raw["features"]["explicit_dead_state"]),
             ),
+            observation_normalization=ObservationNormalizationConfig(
+                enabled=bool(raw["observation_normalization"]["enabled"]),
+                clip_value=float(raw["observation_normalization"]["clip_value"]),
+            ),
         )
 
         params.validate()
@@ -433,3 +446,6 @@ class Parameters:
 
         if self.trade.terminate_on_exit:
             raise ParameterValidationError("v2 keeps running after exit to preserve explicit dead state")
+  
+        if self.observation_normalization.clip_value <= 0.0:
+            raise ParameterValidationError("observation normalization clip value must be positive")
