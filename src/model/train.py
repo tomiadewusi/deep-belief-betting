@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from data import load_config, PriceDataset
-from model import Architecture3
+from model.data import load_config, PriceDataset
+from model.model import Architecture3
 
 
 def train(cfg: SimpleNamespace) -> Architecture3:
