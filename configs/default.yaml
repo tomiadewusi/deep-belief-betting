@@ -84,7 +84,7 @@ belief_features:
   enabled: false
   mode: none
 
-  observation_normalization:
+observation_normalization:
   enabled: true
   clip_value: 5.0
 
