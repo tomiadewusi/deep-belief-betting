@@ -125,7 +125,7 @@ The simulator includes:
 - a **persistent noise-pressure state** for clustered uninformed flow
 - **endogenous public probability** generated through a binary LMSR
 
-This design is important because public prices should not be a trivial transform of hidden truth. The simulator should produce markets where information is revealed **noisily**, **gradually**, and **path-dependently** rather than instantly. 
+This design is important because public prices should not be a trivial transform of hidden truth. The simulator should produce markets where information is revealed **noisily**, **gradually**, and **path-dependently** rather than instantly.
 
 ### time-dependent terminal anchoring
 
@@ -231,7 +231,7 @@ Masks enforce the single-roundtrip structure:
 - if dead post-exit state
   only hold is valid
 
-This keeps the environment mathematically faithful to the stopping structure while staying simple enough for PyTorch and Gym models. 
+This keeps the environment mathematically faithful to the stopping structure while staying simple enough for PyTorch and Gym models.
 
 ---
 
@@ -295,10 +295,10 @@ deep-belief-betting/
 └── README.md
 ```
 
-
 # RL Agent Setup
 
 ## PPO
+
 We use the PPO algorithm because we wanted to train on-policy and based on the fact that our action space is discrete and given that we don't care about sample efficiency because our simulator can generate lots of data!
 
 The PPO code comprises mainly of the model (mlp_actor_critic.py), the key ppo helper functions (algorithms/ppo.py), and the actual training loop (train_ppo.py).
@@ -309,6 +309,7 @@ Tensorboard logs are available to observer while training. When you run the abov
 Simply run that command locally and you will be able to see metrics like entropy_loss, grad_norm_total, etc. This can help you catch anomolies easily and stop a training run before you waste your time.
 
 The general training structure is as follows:
+
 1) Initialize model, and initialize n parallel environment based on passed in config.
 2) Collect experience using the current policy as defined in the config.
 3) Mask out illegal actions, calculate the advantage estimate
@@ -317,3 +318,17 @@ The general training structure is as follows:
 6) backprop
 7) repeat starting at 2
 
+
+## PPO Evaluation
+
+`evaluate_ppo.py` evaluates a trained PPO checkpoint in a single `PredictionMarketEnv` and records detailed agent behavior. It is meant for understanding what the policy is doing: when it enters, whether it buys YES or NO, when it exits, how long it holds, and how PnL evolves across an episode.
+
+Run it with:
+
+```bash
+python -m deep_belief_betting.agent_training.evaluate_ppo \
+  --checkpoint runs/ppo/<run_name>/checkpoints/ppo_000050.pt \
+  --episodes 20
+```
+
+will write more detail for use and common gotchas
