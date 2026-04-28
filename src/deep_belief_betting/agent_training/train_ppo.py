@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Optional
 
 import numpy as np
@@ -10,6 +11,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
 from torch.utils.tensorboard import SummaryWriter
+
+from model.model import Architecture3
 
 from deep_belief_betting.env_factory import make_vector_env
 from deep_belief_betting.parameters import Parameters
@@ -81,6 +84,33 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
 
         n_envs = cfg.num_envs
 
+        ### BELIEF MODEL SETUP ###
+        belief_model = None
+        belief_model_cfg = None
+        seq_bufs: Optional[list[list]] = None
+        if cfg.belief_on and cfg.belief_checkpoint_path:
+            ck = torch.load(cfg.belief_checkpoint_path, map_location=device, weights_only=False)
+            belief_model_cfg = SimpleNamespace(**ck["cfg"])
+            belief_model = Architecture3(belief_model_cfg)
+            belief_model.load_state_dict(ck["model"])
+            belief_model.eval()
+            belief_model.to(device)
+            if cfg.belief_dim != belief_model_cfg.d_z:
+                raise ValueError(
+                    f"belief_dim in training config ({cfg.belief_dim}) does not match "
+                    f"d_z in belief model checkpoint ({belief_model_cfg.d_z}). "
+                    f"Set belief_dim: {belief_model_cfg.d_z} in ppo_train.yaml."
+                )
+            if not params.belief_features.enabled or params.belief_features.mode != "vector":
+                print("[belief] WARNING: belief_on=true but world config has belief_features.enabled=false "
+                      "or mode!=vector — z_t will not appear in observations.")
+            if cfg.belief_q_on and not params.features.include_belief_q:
+                print("[belief] WARNING: belief_q_on=true but world config has include_belief_q=false "
+                      "— Q will not appear in observations.")
+            seq_bufs = [[] for _ in range(n_envs)]
+            print(f"[belief] loaded Architecture3  d_z={belief_model_cfg.d_z}  path={cfg.belief_checkpoint_path}")
+        ### END BELIEF MODEL SETUP ###
+
         obs, infos = env.reset(seed=cfg.seed)
 
         #number of policy updates
@@ -90,14 +120,14 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
             #actual policy rollout for experience collection - happens in parallel across envs
             for i in range(cfg.rollout_steps):
                 obs_t = torch.as_tensor(np.asarray(obs, dtype=np.float32), device=device)
-                mask_t = torch.as_tensor(np.asarray(infos["action_mask"], dtype=np.int64), device=device)
+                mask_t = torch.as_tensor(np.array(list(infos["action_mask"]), dtype=np.int64), device=device)
 
                 logits, vals = model(obs_t)
                 with torch.no_grad():
                     action_t, logprobs_t = _masked_action_sample(logits, mask_t)
 
                 observations.append(np.asarray(obs, dtype=np.float32).copy())
-                masks.append(np.asarray(infos["action_mask"], dtype=np.int64).copy())
+                masks.append(np.array(list(infos["action_mask"]), dtype=np.int64).copy())
                 values.append(vals)
                 old_log_probs.append(logprobs_t)
                 actions.append(action_t)
@@ -110,7 +140,31 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
                 obs, infos = new_observations, new_infos
                 pnl = np.where(new_dones > 0, new_infos["realised_cash_pnl"], 0)
                 pnl_steps.append(pnl)
-            
+
+                ### BELIEF MODEL INFERENCE ###
+                if belief_model is not None:
+                    max_seq = belief_model_cfg.T + 1
+                    for env_i, e in enumerate(env.envs):
+                        if new_dones[env_i]:
+                            seq_bufs[env_i] = []  # episode ended — clear history
+                        else:
+                            ms = e.unwrapped.market.get_state()
+                            seq_bufs[env_i].append([ms.public_probability, ms.delta_q])
+                            if len(seq_bufs[env_i]) > max_seq:
+                                seq_bufs[env_i] = seq_bufs[env_i][-max_seq:]
+
+                    with torch.no_grad():
+                        for env_i, e in enumerate(env.envs):
+                            if not seq_bufs[env_i]:
+                                continue
+                            x = torch.tensor(seq_bufs[env_i], dtype=torch.float32, device=device).unsqueeze(0)
+                            p_t, _, z_t = belief_model(x)
+                            base = e.unwrapped
+                            base.set_belief_vector(z_t[0].cpu().numpy())
+                            if cfg.belief_q_on:
+                                base.set_belief_q(float(p_t[0]))
+                ### END BELIEF MODEL INFERENCE ###
+
             #now combine up the experience into tensors for batch processinglater
             all_rewards = torch.stack(rewards, dim=0).transpose(0, 1)
             all_dones = torch.stack(dones, dim=0).transpose(0, 1)

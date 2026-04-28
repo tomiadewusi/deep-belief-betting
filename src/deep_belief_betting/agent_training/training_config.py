@@ -39,8 +39,9 @@ class TrainingConfig:
 
     #belief feature
     belief_on: bool
-    belief_dim: int #length of belief vector
+    belief_dim: int #length of belief vector (d_z from Architecture3)
     belief_checkpoint_path: str #path to load belief model from
+    belief_q_on: bool #also append scalar Q probability from Architecture3 to obs
     use_tensorboard: bool = True
 
 

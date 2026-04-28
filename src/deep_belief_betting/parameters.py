@@ -174,6 +174,7 @@ class FeatureConfig:
     include_unwind_value_when_invested: bool
     include_belief_features: bool
     explicit_dead_state: bool
+    include_belief_q: bool = False
 
 
 @dataclass(frozen=True)
@@ -372,6 +373,7 @@ class Parameters:
                 include_unwind_value_when_invested=bool(raw["features"]["include_unwind_value_when_invested"]),
                 include_belief_features=bool(raw["features"]["include_belief_features"]),
                 explicit_dead_state=bool(raw["features"]["explicit_dead_state"]),
+                include_belief_q=bool(raw["features"].get("include_belief_q", False)),
             ),
         )
 

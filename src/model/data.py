@@ -17,6 +17,7 @@ REQUIRED_KEYS = [
     "n_epochs",
     "device", "seed",
     "data_path",
+    "checkpoint_path",
 ]
 
 

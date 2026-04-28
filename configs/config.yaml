@@ -29,3 +29,4 @@ n_epochs: 3
 steps_per_epoch: 200
 device: auto           # "auto" | "cuda" | "cpu"
 seed: 0
+checkpoint_path: runs/belief/belief_model.pt

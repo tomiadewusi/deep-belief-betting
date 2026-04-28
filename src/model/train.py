@@ -66,6 +66,13 @@ def train(cfg: SimpleNamespace) -> Architecture3:
                     f"lr {sched.get_last_lr()[0]:.2e}"
                 )
 
+    if hasattr(cfg, "checkpoint_path") and cfg.checkpoint_path:
+        project_root = Path(__file__).parent.parent.parent
+        ck_path = project_root / cfg.checkpoint_path
+        ck_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"model": model.state_dict(), "cfg": vars(cfg)}, ck_path)
+        print(f"[arch3] saved checkpoint → {ck_path}")
+
     return model
 
 

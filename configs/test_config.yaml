@@ -18,3 +18,4 @@ grad_clip: 1.0
 n_epochs: 10
 device: cpu
 seed: 0
+checkpoint_path: runs/belief/test_belief_model.pt

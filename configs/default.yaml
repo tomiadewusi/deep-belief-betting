@@ -81,8 +81,8 @@ reward:
   invalid_action_penalty: 0.01
 
 belief_features:
-  enabled: false
-  mode: none
+  enabled: true
+  mode: vector
 
 features:
   include_public_probability: true
@@ -96,3 +96,4 @@ features:
   include_unwind_value_when_invested: true
   include_belief_features: false
   explicit_dead_state: true
+  include_belief_q: true
