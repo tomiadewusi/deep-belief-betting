@@ -38,6 +38,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         )
 
         self._belief_vector = np.zeros(self.belief_dim, dtype=np.float32)
+        self._belief_q: float = 0.5
         self._episode_done = False
 
     def _observation_dim(self) -> int:
@@ -56,6 +57,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         dim += int(f.include_unwind_value_when_invested)
         dim += int(f.explicit_dead_state)
         dim += self.belief_dim if self.params.belief_features.enabled and self.params.belief_features.mode == "vector" else 0
+        dim += int(f.include_belief_q)
         return dim
 
     def set_belief_vector(self, belief_vector: np.ndarray) -> None:
@@ -63,6 +65,10 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         if belief_vector.shape != (self.belief_dim,):
             raise ValueError("belief vector has wrong shape")
         self._belief_vector = belief_vector.astype(np.float32, copy=True)
+
+    def set_belief_q(self, q: float) -> None:
+        """Set the scalar belief probability predicted by the pretrained model."""
+        self._belief_q = float(q)
 
     def _position_side_encoding(self) -> float:
         """Encode position side as a scalar."""
@@ -199,6 +205,9 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
             for idx, belief_value in enumerate(self._belief_vector.astype(np.float32).tolist()):
                 values[f"belief_{idx}"] = float(belief_value)
 
+        if f.include_belief_q:
+            values["belief_q"] = self._belief_q
+
         return values
 
 
@@ -284,6 +293,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
 
         if self.belief_dim > 0:
             self._belief_vector = np.zeros(self.belief_dim, dtype=np.float32)
+        self._belief_q = 0.5
 
         raw_observation = self._build_raw_observation()
         obs = self._normalize_raw_observation(raw_observation)
