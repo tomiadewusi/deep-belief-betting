@@ -295,10 +295,13 @@ deep-belief-betting/
 └── README.md
 ```
 
+<<<<<<< HEAD
 # Model Setup
 
 ## Encoder/Decoder
 
+=======
+>>>>>>> origin/tomi-sandbox-dbb
 # RL Agent Setup
 
 ## PPO
@@ -321,3 +324,21 @@ The general training structure is as follows:
 5) Compute loss for that mini batch as a combination of policy loss, value estimator loss, and a small entropy loss to encourage exploration
 6) backprop
 7) repeat starting at 2
+<<<<<<< HEAD
+=======
+
+
+## PPO Evaluation
+
+`evaluate_ppo.py` evaluates a trained PPO checkpoint in a single `PredictionMarketEnv` and records detailed agent behavior. It is meant for understanding what the policy is doing: when it enters, whether it buys YES or NO, when it exits, how long it holds, and how PnL evolves across an episode.
+
+Run it with:
+
+```bash
+python -m deep_belief_betting.agent_training.evaluate_ppo \
+  --checkpoint runs/ppo/<run_name>/checkpoints/ppo_000050.pt \
+  --episodes 20
+```
+
+will write more detail for use and common gotchas
+>>>>>>> origin/tomi-sandbox-dbb

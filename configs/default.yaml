@@ -88,6 +88,10 @@ observation_normalization:
   enabled: true
   clip_value: 5.0
 
+observation_normalization:
+  enabled: true
+  clip_value: 5.0
+
 features:
   include_public_probability: true
   include_same_day_flow: true
