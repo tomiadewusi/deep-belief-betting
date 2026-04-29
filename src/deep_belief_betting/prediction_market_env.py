@@ -38,7 +38,6 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         )
 
         self._belief_vector = np.zeros(self.belief_dim, dtype=np.float32)
-        self._belief_q: float = 0.5
         self._episode_done = False
 
     def _observation_dim(self) -> int:
@@ -57,7 +56,6 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         dim += int(f.include_unwind_value_when_invested)
         dim += int(f.explicit_dead_state)
         dim += self.belief_dim if self.params.belief_features.enabled and self.params.belief_features.mode == "vector" else 0
-        dim += int(f.include_belief_q)
         return dim
 
     def set_belief_vector(self, belief_vector: np.ndarray) -> None:
@@ -65,10 +63,6 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         if belief_vector.shape != (self.belief_dim,):
             raise ValueError("belief vector has wrong shape")
         self._belief_vector = belief_vector.astype(np.float32, copy=True)
-
-    def set_belief_q(self, q: float) -> None:
-        """Set the scalar belief probability output for the current step."""
-        self._belief_q = float(q)
 
     def _position_side_encoding(self) -> float:
         """Encode position side as a scalar."""
@@ -80,64 +74,134 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         return 0.0
 
     def _build_observation(self) -> np.ndarray:
-        """Assemble the current observation vector."""
+        """Assemble the normalized agent-facing observation vector."""
+        raw_observation = self._build_raw_observation()
+        return self._normalize_raw_observation(raw_observation)
+
+
+    def _center_probability(self, probability: float) -> float:
+        """Map probability from [0, 1] to [-1, 1]."""
+        return 2.0 * float(probability) - 1.0
+
+
+    def _center_binary(self, value: bool | int | float) -> float:
+        """Map binary feature from {0, 1} to {-1, 1}."""
+        return 2.0 * float(value) - 1.0
+
+
+    def _center_time_to_resolution(self, time_to_resolution: float) -> float:
+        """Map remaining time fraction from [0, 1] to [-1, 1]."""
+        fraction = float(time_to_resolution) / float(self.params.horizon_days)
+        return 2.0 * fraction - 1.0
+
+
+    def _scale_and_clip_by_liquidity(self, value: float) -> float:
+        """Scale unbounded real-valued economic features by LMSR liquidity."""
+        scaled = float(value) / float(self.params.lmsr.b)
+        clip = float(self.params.observation_normalization.clip_value)
+        return float(np.clip(scaled, -clip, clip))
+
+
+    def _normalize_observation_value(self, name: str, value: float) -> float:
+        """Normalize one raw observation feature."""
+        if not self.params.observation_normalization.enabled:
+            return float(value)
+
+        if name in {"public_probability", "entry_public_probability"}:
+            return self._center_probability(value)
+
+        if name == "time_to_resolution":
+            return self._center_time_to_resolution(value)
+
+        if name in {"position_flag", "explicit_dead_state"}:
+            return self._center_binary(value)
+
+        if name == "position_side":
+            return float(value)
+
+        if name in {
+            "same_day_flow",
+            "cash_pnl",
+            "entry_cost_yes",
+            "entry_cost_no",
+            "unwind_value",
+        }:
+            return self._scale_and_clip_by_liquidity(value)
+
+        if name.startswith("belief_"):
+            return float(value)
+
+        raise ValueError(f"unknown observation feature: {name}")
+
+
+    def _normalize_raw_observation(self, raw_observation: dict[str, float]) -> np.ndarray:
+        """Convert ordered raw observation features into the agent-facing vector."""
+        values = [
+            self._normalize_observation_value(name, value)
+            for name, value in raw_observation.items()
+        ]
+        return np.asarray(values, dtype=np.float32)
+
+
+    def _build_raw_observation(self) -> dict[str, float]:
+        """Assemble named raw observation features before normalization."""
         market = self.market.get_state()
         broker = self.broker.get_state()
         f = self.params.features
 
-        values: list[float] = []
+        values: dict[str, float] = {}
 
-        # market state
         if f.include_public_probability:
-            values.append(float(market.public_probability))
+            values["public_probability"] = float(market.public_probability)
 
         if f.include_same_day_flow:
-            values.append(float(market.delta_q))
+            values["same_day_flow"] = float(market.delta_q)
 
         if f.include_time_to_resolution:
-            values.append(float(market.time_to_resolution))
+            values["time_to_resolution"] = float(market.time_to_resolution)
 
-        # agent state
         if f.include_position_flag:
-            values.append(float(int(broker.has_entered and not broker.is_dead)))
+            values["position_flag"] = float(int(broker.has_entered and not broker.is_dead))
 
         if f.include_position_side:
-            values.append(float(self._position_side_encoding()))
+            values["position_side"] = float(self._position_side_encoding())
 
         if f.include_cash_pnl:
-            values.append(float(broker.realised_cash_pnl))
+            values["cash_pnl"] = float(broker.realised_cash_pnl)
 
         if f.include_entry_probability:
-            values.append(float(broker.entry_public_probability))
+            values["entry_public_probability"] = float(broker.entry_public_probability)
 
-        # local execution economics
         if f.include_entry_costs_when_flat:
             if not broker.has_entered:
-                buy_yes_cost = self.broker.preview_entry_cost(market.q, PositionSide.YES)
-                buy_no_cost = self.broker.preview_entry_cost(market.q, PositionSide.NO)
-                values.extend([float(buy_yes_cost), float(buy_no_cost)])
+                values["entry_cost_yes"] = float(
+                    self.broker.preview_entry_cost(market.q, PositionSide.YES)
+                )
+                values["entry_cost_no"] = float(
+                    self.broker.preview_entry_cost(market.q, PositionSide.NO)
+                )
             else:
-                values.extend([0.0, 0.0])
+                values["entry_cost_yes"] = 0.0
+                values["entry_cost_no"] = 0.0
 
         if f.include_unwind_value_when_invested:
             if broker.has_entered and not broker.is_dead and broker.side != PositionSide.FLAT:
-                unwind_value = self.broker.preview_unwind_value(market.q, broker.side)
-                values.append(float(unwind_value))
+                values["unwind_value"] = float(
+                    self.broker.preview_unwind_value(market.q, broker.side)
+                )
             else:
-                values.append(0.0)
+                values["unwind_value"] = 0.0
 
-        # explicit dead state
         if f.explicit_dead_state:
-            values.append(float(int(broker.is_dead)))
+            values["explicit_dead_state"] = float(int(broker.is_dead))
 
-        # pretrained belief features
         if self.params.belief_features.enabled and self.params.belief_features.mode == "vector":
-            values.extend(self._belief_vector.astype(np.float32).tolist())
+            for idx, belief_value in enumerate(self._belief_vector.astype(np.float32).tolist()):
+                values[f"belief_{idx}"] = float(belief_value)
 
-        if self.params.features.include_belief_q:
-            values.append(self._belief_q)
+        return values
 
-        return np.asarray(values, dtype=np.float32)
+
 
     def _reward_for_transition(
         self,
@@ -220,10 +284,14 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
 
         if self.belief_dim > 0:
             self._belief_vector = np.zeros(self.belief_dim, dtype=np.float32)
-        self._belief_q = 0.5
 
-        obs = self._build_observation()
-        info = {"action_mask": self.broker.action_mask().copy(), "realised_cash_pnl": 0.0}
+        raw_observation = self._build_raw_observation()
+        obs = self._normalize_raw_observation(raw_observation)
+        info = {
+            "action_mask": self.broker.action_mask().copy(),
+            "realised_cash_pnl": 0.0,
+            "raw_observation": raw_observation,
+            }
         return obs, info
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
@@ -249,14 +317,15 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
             terminal_settlement=terminal_settlement,
             invalid_action=invalid_action,
         )
-
-        obs = self._build_observation()
+        raw_observation = self._build_raw_observation()
+        obs = self._normalize_raw_observation(raw_observation)
         info = {
             "action_mask": self.broker.action_mask().copy(),
             "terminal_outcome": market_state.terminal_outcome if market_done else None,
             "net_pnl_if_liquidated_now": self.broker.get_state().net_pnl_if_liquidated_now,
             "realised_cash_pnl": self.broker.get_state().realised_cash_pnl,
             "invalid_action": invalid_action,
+            "raw_observation": raw_observation,
         }
         terminated = self._episode_done
         truncated = False
