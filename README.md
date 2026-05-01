@@ -295,13 +295,10 @@ deep-belief-betting/
 └── README.md
 ```
 
-<<<<<<< HEAD
 # Model Setup
 
 ## Encoder/Decoder
 
-=======
->>>>>>> origin/tomi-sandbox-dbb
 # RL Agent Setup
 
 ## PPO
@@ -310,9 +307,9 @@ We use the PPO algorithm because we wanted to train on-policy and based on the f
 
 The PPO code comprises mainly of the model (mlp_actor_critic.py), the key ppo helper functions (algorithms/ppo.py), and the actual training loop (train_ppo.py).
 
-Training can be run with the command  ``python -m deep_belief_betting.agent_training.train_ppo --config configs/ppo_train.yaml``
+Training can be run with the command  ```python -m deep_belief_betting.agent_training.train_ppo --config configs/ppo_train.yaml```
 Tensorboard logs are available to observer while training. When you run the above command, you will see a logdir printed out that looks like:
-``TensorBoard: tensorboard --logdir ./runs/ppo/ppo_20260426_144054/tb``
+```TensorBoard: tensorboard --logdir ./runs/ppo/ppo_20260426_144054/tb```
 Simply run that command locally and you will be able to see metrics like entropy_loss, grad_norm_total, etc. This can help you catch anomolies easily and stop a training run before you waste your time.
 
 The general training structure is as follows:
@@ -324,8 +321,6 @@ The general training structure is as follows:
 5) Compute loss for that mini batch as a combination of policy loss, value estimator loss, and a small entropy loss to encourage exploration
 6) backprop
 7) repeat starting at 2
-<<<<<<< HEAD
-=======
 
 
 ## PPO Evaluation
@@ -340,5 +335,19 @@ python -m deep_belief_betting.agent_training.evaluate_ppo \
   --episodes 20
 ```
 
-will write more detail for use and common gotchas
->>>>>>> origin/tomi-sandbox-dbb
+The evaluator infers the training run directory from the checkpoint path. For example, given:
+
+```text
+runs/ppo/<run_name>/checkpoints/ppo_000050.pt
+```
+
+it loads:
+
+```text
+runs/ppo/<run_name>/training_config.resolved.yaml
+runs/ppo/<run_name>/world_snapshot.yaml
+```
+
+The training config is used to rebuild the same **ActorCritic** architecture, including hidden size, number of layers, and belief feature dimensions. The world snapshot is used to rebuild the market environment used during training.
+
+By default, evaluation is deterministic: the model chooses the highest-probability valid action after applying the action mask. To sample from the policy instead, pass `--stochastic`.
