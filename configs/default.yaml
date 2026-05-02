@@ -1,5 +1,5 @@
 seed: 20260424
-horizon_days: 60
+horizon_days: 64
 time_step_days: 1.0
 
 initial_state:
@@ -83,10 +83,6 @@ reward:
 belief_features:
   enabled: true
   mode: vector
-
-observation_normalization:
-  enabled: true
-  clip_value: 5.0
 
 observation_normalization:
   enabled: true

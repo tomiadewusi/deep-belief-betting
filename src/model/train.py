@@ -7,11 +7,11 @@ from torch.utils.data import DataLoader
 
 from model.data import load_config, PriceDataset
 from model.model import Architecture3
-
+from model.device import resolve_device
 
 def train(cfg: SimpleNamespace) -> Architecture3:
     torch.manual_seed(cfg.seed)
-    device = torch.device(cfg.device)
+    device = resolve_device(cfg.device)
 
     train_set = PriceDataset(csv_path=cfg.data_path, T=cfg.T)
     loader = DataLoader(train_set, batch_size=cfg.batch_size,

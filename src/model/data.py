@@ -35,9 +35,6 @@ def load_config(path: str) -> SimpleNamespace:
 
     cfg = SimpleNamespace(**raw)
 
-    if cfg.device == "auto":
-        cfg.device = "cuda" if torch.cuda.is_available() else "cpu"
-
     return cfg
 
 

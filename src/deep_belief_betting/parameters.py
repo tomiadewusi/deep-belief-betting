@@ -395,10 +395,6 @@ class Parameters:
                 enabled=bool(raw["observation_normalization"]["enabled"]),
                 clip_value=float(raw["observation_normalization"]["clip_value"]),
             ),
-            observation_normalization=ObservationNormalizationConfig(
-                enabled=bool(raw["observation_normalization"]["enabled"]),
-                clip_value=float(raw["observation_normalization"]["clip_value"]),
-            ),
         )
 
         params.validate()
