@@ -248,12 +248,21 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
 
         return float(reward)
 
+    def new_action_mask(self) -> np.ndarray:
+        """Don't let the agent trade on timestep 0"""
+        mask = self.broker.action_mask().astype(np.int8, copy=True)
+        if self.market.get_state().step == 0:
+            mask[1] = 0  # BUY_YES
+            mask[2] = 0  # BUY_NO
+            mask[3] = 0  # SELL
+        return mask
+
     def _handle_action(self, action: int) -> tuple[float, bool]:
         """Apply the agent action before exogenous flow."""
         broker_state = self.broker.get_state()
         market_state = self.market.get_state()
 
-        action_mask = self.broker.action_mask()
+        action_mask = self.new_action_mask()
         invalid_action = bool(action_mask[action] == 0)
         realised_cash_before = broker_state.realised_cash_pnl
 
@@ -312,7 +321,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         raw_observation = self._build_raw_observation()
         obs = self._normalize_raw_observation(raw_observation)
         info = {
-            "action_mask": self.broker.action_mask().copy(),
+            "action_mask": self.new_action_mask().copy(),
             "realised_cash_pnl": 0.0,
             "raw_observation": raw_observation,
             }
@@ -344,7 +353,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         raw_observation = self._build_raw_observation()
         obs = self._normalize_raw_observation(raw_observation)
         info = {
-            "action_mask": self.broker.action_mask().copy(),
+            "action_mask": self.new_action_mask().copy(),
             "terminal_outcome": market_state.terminal_outcome if market_done else None,
             "net_pnl_if_liquidated_now": self.broker.get_state().net_pnl_if_liquidated_now,
             "realised_cash_pnl": self.broker.get_state().realised_cash_pnl,
@@ -357,4 +366,4 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
 
     def get_action_mask(self) -> np.ndarray:
         """Return the current action mask."""
-        return self.broker.action_mask().copy()
+        return self.new_action_mask().copy()
