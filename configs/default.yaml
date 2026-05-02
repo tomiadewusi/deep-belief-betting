@@ -101,4 +101,4 @@ features:
   include_belief_features: false
   explicit_dead_state: true
   include_belief_q: true
-  include_belief_terminal: false
+  include_belief_terminal: true
