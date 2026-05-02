@@ -1,6 +1,6 @@
 import math
 from types import SimpleNamespace
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -110,7 +110,16 @@ class Architecture3(nn.Module):
 
         self.state_proj = nn.Linear(cfg.d_model, cfg.d_z)
 
-        self.decoder_mlp = nn.Sequential(
+        self.latent_decoder_mlp = nn.Sequential(
+            nn.Linear(cfg.d_z, cfg.d_dec_hidden),
+            nn.GELU(),
+            nn.Dropout(cfg.dropout),
+            nn.Linear(cfg.d_dec_hidden, cfg.d_dec_hidden),
+            nn.GELU(),
+            nn.Dropout(cfg.dropout),
+            nn.Linear(cfg.d_dec_hidden, 1),
+        )
+        self.outcome_decoder_mlp = nn.Sequential(
             nn.Linear(cfg.d_z, cfg.d_dec_hidden),
             nn.GELU(),
             nn.Dropout(cfg.dropout),
@@ -129,7 +138,7 @@ class Architecture3(nn.Module):
             if m.bias is not None:
                 nn.init.zeros_(m.bias)
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         B, L, in_dim = x.shape
         assert L <= self.cfg.T + 1, f"sequence length {L} exceeds T+1={self.cfg.T+1}"
         assert in_dim == self.cfg.in_dim, f"expected in_dim={self.cfg.in_dim}, got {in_dim}"
@@ -144,6 +153,10 @@ class Architecture3(nn.Module):
 
         z_t = self.state_proj(h[:, -1, :])
 
-        logit = self.decoder_mlp(z_t).squeeze(-1)
+        logit = self.latent_decoder_mlp(z_t).squeeze(-1)
         p_t = torch.sigmoid(logit)
-        return p_t, logit, z_t
+        if self.cfg.enable_true_prob_head:
+            out_t = self.outcome_decoder_mlp(z_t).squeeze(-1)
+            return p_t, logit, z_t, out_t
+        else:
+            return p_t, logit, z_t, None

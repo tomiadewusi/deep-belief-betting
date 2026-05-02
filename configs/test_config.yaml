@@ -18,4 +18,6 @@ grad_clip: 1.0
 n_epochs: 30
 device: auto
 seed: 0
+enable_true_prob_head: true
+true_prob_loss_weight: 0.4
 checkpoint_path: runs/belief/test_belief_model.pt

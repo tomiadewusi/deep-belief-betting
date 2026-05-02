@@ -32,20 +32,34 @@ def train(cfg: SimpleNamespace) -> Architecture3:
     global_step = 0
     L_total = cfg.T + 1
 
+    enable_true_prob_head = cfg.enable_true_prob_head
+    true_prob_loss_weight = cfg.true_prob_loss_weight
+
     for epoch in range(cfg.n_epochs):
-        for features_batch, targets_batch in loader:
+        for features_batch, targets_batch, terminal_labels_batch in loader:
             features_batch = features_batch.to(device)       # (B, T+1, 2)
             targets_batch = targets_batch.to(device)         # (B, T+1)
+            terminal_labels_batch = terminal_labels_batch.to(device)  # (B,)
             B = features_batch.shape[0]
 
             logits = []
+            outcome_logits = []
             for i in range(L_total):
                 x = features_batch[:, :i+1, :]               # (B, i+1, 2)
-                _, logit_i, _ = model(x)                      # (B,)
+                _, logit_i, _, out_i = model(x)              # (B,), optional (B,)
                 logits.append(logit_i)
+                if enable_true_prob_head:
+                    outcome_logits.append(out_i)
 
             logits = torch.stack(logits, dim=1)               # (B, T+1)
-            loss = F.binary_cross_entropy_with_logits(logits, targets_batch)
+            if enable_true_prob_head:
+                outcome_logits = torch.stack(outcome_logits, dim=1)   # (B, T+1)
+                terminal_targets = terminal_labels_batch.unsqueeze(1).expand(-1, L_total)  # (B, T+1)
+                latent_loss = F.binary_cross_entropy_with_logits(logits, targets_batch)
+                outcome_loss = F.binary_cross_entropy_with_logits(outcome_logits, terminal_targets)
+                loss = (1 - true_prob_loss_weight) * latent_loss + true_prob_loss_weight * outcome_loss
+            else:
+                loss = F.binary_cross_entropy_with_logits(logits, targets_batch)
 
             opt.zero_grad(set_to_none=True)
             loss.backward()
