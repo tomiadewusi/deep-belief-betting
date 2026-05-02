@@ -39,6 +39,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
 
         self._belief_vector = np.zeros(self.belief_dim, dtype=np.float32)
         self._belief_q: float = 0.5
+        self._belief_terminal: float = 0.5
         self._episode_done = False
 
     def _observation_dim(self) -> int:
@@ -58,6 +59,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         dim += int(f.explicit_dead_state)
         dim += self.belief_dim if self.params.belief_features.enabled and self.params.belief_features.mode == "vector" else 0
         dim += int(f.include_belief_q)
+        dim += int(f.include_belief_terminal)
         return dim
 
     def set_belief_vector(self, belief_vector: np.ndarray) -> None:
@@ -69,6 +71,10 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
     def set_belief_q(self, q: float) -> None:
         """Set the scalar belief probability predicted by the pretrained model."""
         self._belief_q = float(q)
+
+    def set_belief_terminal(self, terminal_probability: float) -> None:
+        """Set the scalar terminal outcome probability from the pretrained model."""
+        self._belief_terminal = float(terminal_probability)
 
     def _position_side_encoding(self) -> float:
         """Encode position side as a scalar."""
@@ -83,6 +89,10 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         """Assemble the normalized agent-facing observation vector."""
         raw_observation = self._build_raw_observation()
         return self._normalize_raw_observation(raw_observation)
+
+    def refresh_observation(self) -> np.ndarray:
+        """Rebuild the current normalized observation with latest external beliefs."""
+        return self._build_observation()
 
 
     def _center_probability(self, probability: float) -> float:
@@ -208,6 +218,9 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         if f.include_belief_q:
             values["belief_q"] = self._belief_q
 
+        if f.include_belief_terminal:
+            values["belief_terminal"] = self._belief_terminal
+
         return values
 
 
@@ -294,6 +307,7 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
         if self.belief_dim > 0:
             self._belief_vector = np.zeros(self.belief_dim, dtype=np.float32)
         self._belief_q = 0.5
+        self._belief_terminal = 0.5
 
         raw_observation = self._build_raw_observation()
         obs = self._normalize_raw_observation(raw_observation)

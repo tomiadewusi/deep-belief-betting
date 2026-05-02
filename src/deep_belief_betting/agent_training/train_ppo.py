@@ -107,6 +107,12 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
             if cfg.belief_q_on and not params.features.include_belief_q:
                 print("[belief] WARNING: belief_q_on=true but world config has include_belief_q=false "
                       "— Q will not appear in observations.")
+            if cfg.belief_terminal_on and not params.features.include_belief_terminal:
+                print("[belief] WARNING: belief_terminal_on=true but world config has include_belief_terminal=false "
+                      "— terminal belief will not appear in observations.")
+            if cfg.belief_terminal_on and not bool(getattr(belief_model_cfg, "enable_true_prob_head", False)):
+                print("[belief] WARNING: belief_terminal_on=true but belief checkpoint has enable_true_prob_head=false "
+                      "— terminal head output is unavailable.")
             seq_bufs = [[] for _ in range(n_envs)]
             print(f"[belief] loaded Architecture3  d_z={belief_model_cfg.d_z}  path={cfg.belief_checkpoint_path}")
         ### END BELIEF MODEL SETUP ###
@@ -158,11 +164,14 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
                             if not seq_bufs[env_i]:
                                 continue
                             x = torch.tensor(seq_bufs[env_i], dtype=torch.float32, device=device).unsqueeze(0)
-                            p_t, _, z_t = belief_model(x)
+                            p_t, _, z_t, out_t = belief_model(x)
                             base = e.unwrapped
                             base.set_belief_vector(z_t[0].cpu().numpy())
                             if cfg.belief_q_on:
                                 base.set_belief_q(float(p_t[0]))
+                            if cfg.belief_terminal_on and out_t is not None:
+                                base.set_belief_terminal(float(torch.sigmoid(out_t)[0]))
+                            new_observations[env_i] = base.refresh_observation()
                 ### END BELIEF MODEL INFERENCE ###
 
             #now combine up the experience into tensors for batch processinglater

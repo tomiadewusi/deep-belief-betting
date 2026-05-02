@@ -175,13 +175,8 @@ class FeatureConfig:
     include_belief_features: bool
     explicit_dead_state: bool
     include_belief_q: bool = False
+    include_belief_terminal: bool = False
 
-@dataclass(frozen=True)
-class ObservationNormalizationConfig:
-    """Observation normalization controls."""
-
-    enabled: bool
-    clip_value: float
 
 @dataclass(frozen=True)
 class ObservationNormalizationConfig:
@@ -390,6 +385,7 @@ class Parameters:
                 include_belief_features=bool(raw["features"]["include_belief_features"]),
                 explicit_dead_state=bool(raw["features"]["explicit_dead_state"]),
                 include_belief_q=bool(raw["features"].get("include_belief_q", False)),
+                include_belief_terminal=bool(raw["features"].get("include_belief_terminal", False)),
             ),
             observation_normalization=ObservationNormalizationConfig(
                 enabled=bool(raw["observation_normalization"]["enabled"]),

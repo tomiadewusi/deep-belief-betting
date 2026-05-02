@@ -28,4 +28,5 @@ belief_on: true
 belief_dim: 16          # must match d_z in the Architecture3 checkpoint
 belief_checkpoint_path: runs/belief/test_belief_model.pt
 belief_q_on: true
+belief_terminal_on: false
 use_tensorboard: true
