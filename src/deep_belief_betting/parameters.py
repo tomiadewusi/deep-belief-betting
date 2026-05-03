@@ -446,8 +446,8 @@ class Parameters:
         if self.belief_features.mode not in {"none", "vector"}:
             raise ParameterValidationError("belief feature mode must be none or vector")
 
-        if self.trade.allow_reentry:
-            raise ParameterValidationError("v2 assumes strict single roundtrip with no reentry")
+        # if self.trade.allow_reentry:
+        #     raise ParameterValidationError("v2 assumes strict single roundtrip with no reentry")
 
         if self.trade.terminate_on_exit:
             raise ParameterValidationError("v2 keeps running after exit to preserve explicit dead state")

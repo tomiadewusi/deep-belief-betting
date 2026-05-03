@@ -239,7 +239,9 @@ class PredictionMarketEnv(gym.Env[np.ndarray, int]):
             reward += realised_cash_change + terminal_settlement
 
         elif reward_mode == "terminal_net_pnl":
-            if self._episode_done:
+            if self.params.trade.allow_reentry:
+                reward += realised_cash_change + terminal_settlement
+            elif self._episode_done:
                 reward += self.broker.get_state().realised_cash_pnl
 
         # keep shaping tiny and explicit

@@ -161,8 +161,8 @@ class Broker:
         new_realised_cash_pnl = self._state.realised_cash_pnl + cash_change
 
         self._state = BrokerState(
-            has_entered=True,
-            is_dead=True,
+            has_entered=not self.params.trade.allow_reentry,
+            is_dead=not self.params.trade.allow_reentry,
             side=PositionSide.FLAT,
             position_size=0,
             entry_public_probability=self._state.entry_public_probability,

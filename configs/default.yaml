@@ -67,7 +67,7 @@ lmsr:
   b: 20.0
 
 trade:
-  allow_reentry: false
+  allow_reentry: true
   trade_size_policy_name: default_fraction_of_b
   terminate_on_exit: false
 
