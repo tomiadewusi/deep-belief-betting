@@ -101,21 +101,38 @@ class Broker:
             return float(size)
         raise ValueError("cannot unwind a flat position")
 
+    # previous problematic code basically the issue was 
+    # I treated buying NO as equivalent to shorting YES 
+    # because both reduce the LMSR net YES inventory. 
+    # But in the reduced one-dimensional LMSR representation, 
+    # buying NO requires an additional collateral/payoff term. 
+    # Without that term, the code prices a NO purchase like a 
+    # short-YES trade while settling it like a long-NO contract, 
+    # which creates invalid arbitrage-like PnL.
+    #----------------------------------
     def preview_entry_cost(self, q: float, side: PositionSide) -> float:
         """Return net entry cost including explicit fees."""
         signed_trade = self.signed_entry_trade(side)
         gross_cost = self._execution_value(q, signed_trade)
+
+        if side == PositionSide.NO:
+            gross_cost += self.trade_size()
+
         fee = self._fee(gross_cost)
         return gross_cost + fee
+
 
     def preview_unwind_value(self, q: float, side: PositionSide) -> float:
         """Return net unwind cash inflow after explicit fees."""
         signed_trade = self.signed_unwind_trade(side)
         gross_value = -self._execution_value(q, signed_trade)
 
-        # gross value is positive cash back to the agent
+        if side == PositionSide.NO:
+            gross_value += self.trade_size()
+
         fee = self._fee(gross_value)
         return gross_value - fee
+
 
     def enter(self, q: float, public_probability: float, side: PositionSide) -> float:
         """Enter a fixed YES or NO position and return signed YES trade."""
@@ -126,10 +143,13 @@ class Broker:
 
         signed_trade = self.signed_entry_trade(side)
         gross_cost = self._execution_value(q, signed_trade)
+
+        if side == PositionSide.NO:
+            gross_cost += self.trade_size()
+
         fee = self._fee(gross_cost)
         cash_change = -(gross_cost + fee)
 
-        # realized cash pnl records actual money moved
         new_realised_cash_pnl = self._state.realised_cash_pnl + cash_change
 
         self._state = BrokerState(
@@ -144,6 +164,7 @@ class Broker:
         )
         return signed_trade
 
+
     def exit(self, q: float) -> float:
         """Exit the current position and return signed YES trade."""
         if self._state is None:
@@ -155,6 +176,10 @@ class Broker:
 
         signed_trade = self.signed_unwind_trade(self._state.side)
         gross_value = -self._execution_value(q, signed_trade)
+
+        if self._state.side == PositionSide.NO:
+            gross_value += self.trade_size()
+
         fee = self._fee(gross_value)
         cash_change = gross_value - fee
 
@@ -171,6 +196,8 @@ class Broker:
             net_pnl_if_liquidated_now=new_realised_cash_pnl,
         )
         return signed_trade
+            
+    #------------------------
 
     def update_mark_to_liquidation(self, q: float) -> None:
         """Refresh net pnl if liquidated now."""
