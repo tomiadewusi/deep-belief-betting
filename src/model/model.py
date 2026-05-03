@@ -51,6 +51,18 @@ class CausalSelfAttention(nn.Module):
         )
         return self.out(self._merge(out))
 
+    def forward_with_attn(self, x: torch.Tensor):
+        q, k, v = self.qkv(x).chunk(3, dim=-1)
+        q, k, v = map(self._split, (q, k, v))
+        scale = self.d_head ** -0.5
+        scores = torch.matmul(q, k.transpose(-2, -1)) * scale
+        L = scores.size(-1)
+        causal_mask = torch.triu(torch.ones(L, L, device=x.device, dtype=torch.bool), diagonal=1)
+        scores = scores.masked_fill(causal_mask, float("-inf"))
+        attn_weights = torch.softmax(scores, dim=-1)
+        out = torch.matmul(attn_weights, v)
+        return self.out(self._merge(out)), attn_weights
+
 
 class FeedForward(nn.Module):
     def __init__(self, d_model: int, d_ff: int, dropout: float):
@@ -79,6 +91,12 @@ class EncoderBlock(nn.Module):
         x = x + self.attn(self.ln1(x))
         x = x + self.ff(self.ln2(x))
         return x
+
+    def forward_with_attn(self, x):
+        attn_out, attn_weights = self.attn.forward_with_attn(self.ln1(x))
+        x = x + attn_out
+        x = x + self.ff(self.ln2(x))
+        return x, attn_weights
 
 
 class Architecture3(nn.Module):
@@ -137,6 +155,23 @@ class Architecture3(nn.Module):
             nn.init.xavier_uniform_(m.weight)
             if m.bias is not None:
                 nn.init.zeros_(m.bias)
+
+    def forward_with_attn(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor], list]:
+        h = self.input_proj(x)
+        h = self.pos_enc(h)
+        h = self.input_dropout(h)
+
+        all_attn: list = []
+        for layer in self.encoder_layers:
+            h, attn_w = layer.forward_with_attn(h)
+            all_attn.append(attn_w)
+        h = self.encoder_norm(h)
+
+        z_t = self.state_proj(h[:, -1, :])
+        logit = self.latent_decoder_mlp(z_t).squeeze(-1)
+        p_t = torch.sigmoid(logit)
+        out_t = self.outcome_decoder_mlp(z_t).squeeze(-1) if self.cfg.enable_true_prob_head else None
+        return p_t, logit, z_t, out_t, all_attn
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         B, L, in_dim = x.shape

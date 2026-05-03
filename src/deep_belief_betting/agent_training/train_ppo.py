@@ -92,7 +92,11 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
             ck = torch.load(cfg.belief_checkpoint_path, map_location=device, weights_only=False)
             belief_model_cfg = SimpleNamespace(**ck["cfg"])
             belief_model = Architecture3(belief_model_cfg)
-            belief_model.load_state_dict(ck["model"])
+            sd = {
+                ("latent_" + k if k.startswith("decoder_mlp.") else k): v
+                for k, v in ck["model"].items()
+            }
+            belief_model.load_state_dict(sd, strict=False)
             belief_model.eval()
             belief_model.to(device)
             if cfg.belief_dim != belief_model_cfg.d_z:
