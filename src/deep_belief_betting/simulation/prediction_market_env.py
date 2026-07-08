@@ -6,9 +6,9 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from deep_belief_betting.broker import Broker, PositionSide
-from deep_belief_betting.market_sim import MarketSim, MarketState
-from deep_belief_betting.parameters import Parameters
+from deep_belief_betting.simulation.broker import Broker, PositionSide
+from deep_belief_betting.simulation.market_sim import MarketSim, MarketState
+from deep_belief_betting.simulation.parameters import Parameters
 
 
 class PredictionMarketEnv(gym.Env[np.ndarray, int]):

@@ -278,13 +278,16 @@ deep-belief-betting/
 ├── src/
 │   └── deep_belief_betting/
 │       ├── __init__.py
-│       ├── parameters.py
-│       ├── market_sim.py
-│       ├── broker.py
-│       ├── prediction_market_env.py
-│       ├── pretraining_path_generator.py
-│       ├── env_factory.py
-│       └── smoke_train.py
+│       ├── agent_training/
+│       └── simulation/
+│           ├── __init__.py
+│           ├── parameters.py
+│           ├── market_sim.py
+│           ├── broker.py
+│           ├── prediction_market_env.py
+│           ├── pretraining_path_generator.py
+│           ├── env_factory.py
+│           └── smoke_train.py
 ├── tests/
 │   ├── test_parameters.py
 │   ├── test_market_sim.py

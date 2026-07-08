@@ -1,5 +1,5 @@
-from deep_belief_betting.parameters import Parameters
-from deep_belief_betting.pretraining_path_generator import PretrainingPathGenerator
+from deep_belief_betting.simulation.parameters import Parameters
+from deep_belief_betting.simulation.pretraining_path_generator import PretrainingPathGenerator
 
 
 def test_pretraining_episode_shapes() -> None:

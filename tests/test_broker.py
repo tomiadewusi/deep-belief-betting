@@ -1,5 +1,5 @@
-from deep_belief_betting.broker import Broker, PositionSide
-from deep_belief_betting.parameters import Parameters
+from deep_belief_betting.simulation.broker import Broker, PositionSide
+from deep_belief_betting.simulation.parameters import Parameters
 
 
 def test_no_entry_is_true_long_no_cost() -> None:

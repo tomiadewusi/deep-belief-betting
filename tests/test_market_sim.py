@@ -1,5 +1,5 @@
-from deep_belief_betting.market_sim import MarketSim
-from deep_belief_betting.parameters import Parameters
+from deep_belief_betting.simulation.market_sim import MarketSim
+from deep_belief_betting.simulation.parameters import Parameters
 
 
 def test_market_sim_reset_and_step() -> None:

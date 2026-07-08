@@ -15,8 +15,8 @@ from torch.distributions import Categorical
 from deep_belief_betting.agent_training.device import resolve_device
 from deep_belief_betting.agent_training.policy.mlp_actor_critic import ActorCritic
 from deep_belief_betting.agent_training.training_config import  TrainingConfig, load_training_config
-from deep_belief_betting.parameters import Parameters
-from deep_belief_betting.prediction_market_env import PredictionMarketEnv
+from deep_belief_betting.simulation.parameters import Parameters
+from deep_belief_betting.simulation.prediction_market_env import PredictionMarketEnv
 
 
 ACTION_NAMES = {

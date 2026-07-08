@@ -8,8 +8,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from deep_belief_betting.env_factory import make_vector_env
-from deep_belief_betting.parameters import Parameters
+from deep_belief_betting.simulation.env_factory import make_vector_env
+from deep_belief_betting.simulation.parameters import Parameters
 
 
 @dataclass

@@ -1,4 +1,4 @@
-from deep_belief_betting.parameters import Parameters
+from deep_belief_betting.simulation.parameters import Parameters
 
 
 def test_load_default_yaml() -> None:

@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-from deep_belief_betting.parameters import Parameters
+from deep_belief_betting.simulation.parameters import Parameters
 
 
 @dataclass(frozen=True)

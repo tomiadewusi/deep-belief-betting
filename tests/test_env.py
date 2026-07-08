@@ -1,7 +1,7 @@
 import numpy as np
 
-from deep_belief_betting.parameters import Parameters
-from deep_belief_betting.prediction_market_env import PredictionMarketEnv
+from deep_belief_betting.simulation.parameters import Parameters
+from deep_belief_betting.simulation.prediction_market_env import PredictionMarketEnv
 
 
 def test_env_reset_and_step() -> None:

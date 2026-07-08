@@ -14,8 +14,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from model.model import Architecture3
 
-from deep_belief_betting.env_factory import make_vector_env
-from deep_belief_betting.parameters import Parameters
+from deep_belief_betting.simulation.env_factory import make_vector_env
+from deep_belief_betting.simulation.parameters import Parameters
 from deep_belief_betting.agent_training.algorithms.ppo import compute_gae, compute_ppo_minibatch_loss, masked_log_prob_and_entropy
 
 from deep_belief_betting.agent_training.device import resolve_device

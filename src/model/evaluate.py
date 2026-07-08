@@ -9,8 +9,8 @@ import numpy as np
 import torch
 
 from model.model import Architecture3
-from deep_belief_betting.parameters import Parameters
-from deep_belief_betting.market_sim import MarketSim
+from deep_belief_betting.simulation.parameters import Parameters
+from deep_belief_betting.simulation.market_sim import MarketSim
 
 
 def _remap_state_dict(sd: dict) -> dict:

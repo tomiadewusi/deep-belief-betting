@@ -4,8 +4,8 @@ from typing import Callable
 
 import gymnasium as gym
 
-from deep_belief_betting.parameters import Parameters
-from deep_belief_betting.prediction_market_env import PredictionMarketEnv
+from deep_belief_betting.simulation.parameters import Parameters
+from deep_belief_betting.simulation.prediction_market_env import PredictionMarketEnv
 
 
 def make_env(params: Parameters, rank: int, belief_dim: int = 0) -> Callable[[], PredictionMarketEnv]:
