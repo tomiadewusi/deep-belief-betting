@@ -37,3 +37,39 @@ def test_env_action_mask_changes_after_entry() -> None:
     assert np.array_equal(info["action_mask"], np.array([1, 0, 0, 1], dtype=np.int8))
 
     env.close()
+
+
+def test_env_invalid_trade_at_reset_is_penalized() -> None:
+    params = Parameters.from_yaml("configs/default.yaml")
+    env = PredictionMarketEnv(params=params, belief_dim=0)
+
+    _, info = env.reset(seed=123)
+    assert info["action_mask"][1] == 0
+
+    _, reward, _, _, info = env.step(1)
+
+    assert info["invalid_action"] is True
+    assert reward == -params.reward.invalid_action_penalty
+    assert np.array_equal(info["action_mask"], np.array([1, 1, 1, 0], dtype=np.int8))
+
+    env.close()
+
+
+def test_env_allows_reentry_after_exit() -> None:
+    params = Parameters.from_yaml("configs/default.yaml")
+    env = PredictionMarketEnv(params=params, belief_dim=0)
+
+    env.reset(seed=123)
+    _, _, _, _, info = env.step(0)
+    assert np.array_equal(info["action_mask"], np.array([1, 1, 1, 0], dtype=np.int8))
+
+    _, _, _, _, info = env.step(1)
+    assert np.array_equal(info["action_mask"], np.array([1, 0, 0, 1], dtype=np.int8))
+
+    _, _, _, _, info = env.step(3)
+    assert np.array_equal(info["action_mask"], np.array([1, 1, 1, 0], dtype=np.int8))
+
+    _, _, _, _, info = env.step(2)
+    assert np.array_equal(info["action_mask"], np.array([1, 0, 0, 1], dtype=np.int8))
+
+    env.close()

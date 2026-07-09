@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from deep_belief_betting.simulation.broker import Broker, PositionSide
 from deep_belief_betting.simulation.parameters import Parameters
 
@@ -62,3 +64,19 @@ def test_broker_entry_exit_and_reentry() -> None:
     signed_reentry = broker.enter(q=q0, public_probability=p0, side=PositionSide.NO)
     assert signed_reentry < 0
     assert broker.get_state().side == PositionSide.NO
+
+
+def test_broker_exit_enters_dead_state_when_reentry_disabled() -> None:
+    params = Parameters.from_yaml("configs/default.yaml")
+    params = replace(params, trade=replace(params.trade, allow_reentry=False))
+    broker = Broker(params)
+    broker.reset()
+
+    signed_entry = broker.enter(q=0.0, public_probability=0.5, side=PositionSide.YES)
+    broker.exit(q=signed_entry)
+
+    state = broker.get_state()
+    assert state.has_entered is True
+    assert state.is_dead is True
+    assert state.side == PositionSide.FLAT
+    assert broker.action_mask().tolist() == [1, 0, 0, 0]
