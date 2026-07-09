@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -81,8 +82,7 @@ def train(cfg: SimpleNamespace) -> Architecture3:
                 )
 
     if hasattr(cfg, "checkpoint_path") and cfg.checkpoint_path:
-        project_root = Path(__file__).parent.parent.parent
-        ck_path = project_root / cfg.checkpoint_path
+        ck_path = Path(cfg.checkpoint_path)
         ck_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save({"model": model.state_dict(), "cfg": vars(cfg)}, ck_path)
         print(f"[arch3] saved checkpoint → {ck_path}")
@@ -90,12 +90,20 @@ def train(cfg: SimpleNamespace) -> Architecture3:
     return model
 
 
-if __name__ == "__main__":
-    cfg_path = Path("configs/config.yaml")
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="configs/config.yaml")
+    args = parser.parse_args()
+
+    cfg_path = Path(args.config)
     if not cfg_path.exists():
         raise FileNotFoundError(f"config not found: {cfg_path.resolve()}")
 
     cfg = load_config(str(cfg_path))
     print(f"[arch3] loaded config from {cfg_path.resolve()}")
 
-    model = train(cfg)
+    train(cfg)
+
+
+if __name__ == "__main__":
+    main()

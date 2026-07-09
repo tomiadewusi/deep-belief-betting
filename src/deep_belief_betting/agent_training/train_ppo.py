@@ -62,6 +62,7 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
     set_seed(cfg.seed)
     run_dir = create_run_dir(cfg.log_dir, cfg.run_name, cfg)
     writer = log_writer(run_dir, cfg.use_tensorboard)
+    env = None
     if writer is not None:
         print(f"TensorBoard: tensorboard --logdir ./{run_dir!s}/tb")
 
@@ -269,7 +270,7 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
                     final_logger["policy_loss"] += log_dict["policy_loss"]
                     final_logger["value_loss"] += log_dict["value_loss"]
                     final_logger["entropy_loss"] += log_dict["entropy_loss"]
-                    final_logger["total_loss"] += float(loss)
+                    final_logger["total_loss"] += float(loss.detach())
                     final_logger["denominator_for_avg"] += 1
                     optimizer.zero_grad()
                     loss.backward()
@@ -292,7 +293,9 @@ def train_ppo(cfg: TrainingConfig, device: torch.device) -> Path:
             
             #only want to keep pnl from when the episode is done, cuz then we have the actual pnl
             pnl_resolved = pnl_stack[dones > 0]
-            final_logger["pnl_avg"] = pnl_resolved.mean()
+            final_logger["pnl_avg"] = (
+                float(pnl_resolved.mean()) if pnl_resolved.size > 0 else 0.0
+            )
             step = update_idx
 
             if writer is not None:

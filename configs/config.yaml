@@ -2,9 +2,9 @@
 # Edit values here; pass path with --config or rely on the default location.
 
 # --- data ---
-T: 31
+T: 64
 in_dim: 2
-data_path: data/belief_train.csv
+data_path: runs/belief/pretraining_paths.csv
 
 # --- transformer ---
 d_model: 128

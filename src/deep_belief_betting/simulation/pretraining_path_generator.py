@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import csv
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -130,3 +131,25 @@ class PretrainingPathGenerator:
                 writer.writerow(row)
 
         return output_path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--world-config", default="configs/default.yaml")
+    parser.add_argument("--output", default="runs/belief/pretraining_paths.csv")
+    parser.add_argument("--num-paths", type=int, default=256)
+    parser.add_argument("--base-seed", type=int, default=None)
+    args = parser.parse_args()
+
+    params = Parameters.from_yaml(args.world_config)
+    generator = PretrainingPathGenerator(params)
+    output_path = generator.write_price_dataset_csv(
+        path=args.output,
+        num_paths=args.num_paths,
+        base_seed=args.base_seed,
+    )
+    print(f"Wrote {args.num_paths} belief pretraining paths to {output_path}")
+
+
+if __name__ == "__main__":
+    main()

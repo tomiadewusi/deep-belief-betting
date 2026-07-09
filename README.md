@@ -15,6 +15,51 @@ The core idea is that this is **not just a forecasting problem**. The agent inte
 
 ---
 
+## quickstart
+
+From a fresh clone:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+pytest -q
+```
+
+Generate supervised belief-model data from the simulator:
+
+```bash
+python -m deep_belief_betting.simulation.pretraining_path_generator \
+  --world-config configs/default.yaml \
+  --output runs/belief/pretraining_paths.csv \
+  --num-paths 256
+```
+
+Train the compact belief model used by the PPO config:
+
+```bash
+python -m deep_belief_betting.belief_model.train \
+  --config configs/test_config.yaml
+```
+
+Train PPO with the generated belief checkpoint:
+
+```bash
+python -m deep_belief_betting.agent_training.train_ppo \
+  --config configs/ppo_train.yaml
+```
+
+For a fast end-to-end smoke check, use:
+
+```bash
+python -m deep_belief_betting.agent_training.train_ppo \
+  --config configs/ppo_smoke.yaml
+```
+
+The same commands are also exposed as console scripts after installation: `dbb-generate-belief-data`, `dbb-train-belief`, and `dbb-train-ppo`.
+
+---
+
 ## project motivation
 
 Binary prediction markets are attractive because the object being traded is simple, but the decision problem is not.
@@ -279,6 +324,7 @@ deep-belief-betting/
 │   └── deep_belief_betting/
 │       ├── __init__.py
 │       ├── agent_training/
+│       ├── belief_model/
 │       └── simulation/
 │           ├── __init__.py
 │           ├── parameters.py
@@ -298,7 +344,7 @@ deep-belief-betting/
 └── README.md
 ```
 
-# Model Setup
+# Belief Model Setup
 
 ## Encoder/Decoder
 

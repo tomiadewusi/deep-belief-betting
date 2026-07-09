@@ -18,6 +18,11 @@ dependencies = [
   "pytest",
 ]
 
+[project.scripts]
+dbb-generate-belief-data = "deep_belief_betting.simulation.pretraining_path_generator:main"
+dbb-train-belief = "deep_belief_betting.belief_model.train:main"
+dbb-train-ppo = "deep_belief_betting.agent_training.train_ppo:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 

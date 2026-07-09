@@ -1,6 +1,6 @@
 T: 64
 in_dim: 2
-data_path: test_data.csv
+data_path: runs/belief/pretraining_paths.csv
 
 d_model: 64
 n_heads: 4
