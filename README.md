@@ -1,6 +1,6 @@
 # deep-belief-betting
 
-`deep-belief-betting` is a research-oriented deep reinforcement learning codebase for studying **single-roundtrip trading in binary prediction markets** under **partial observability**, **LMSR market making**, and **reinforcement learning**.
+`deep-belief-betting` is a research-oriented deep reinforcement learning codebase for studying **repeated roundtrip trading in binary prediction markets** under **partial observability**, **LMSR market making**, and **reinforcement learning**.
 
 The project is built around a clean decomposition:
 
