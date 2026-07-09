@@ -53,7 +53,7 @@ class PriceDataset(Dataset):
 
     Expected CSV columns:
         prob_0, prob_1, ..., prob_T       (public probability)
-        feat_0, feat_1, ..., feat_T       (flow variable)
+        feat_0, feat_1, ..., feat_T       (same-step net flow)
         latent_0, latent_1, ..., latent_T (target: latent probability)
         terminal_label (final outcome of the episode)
     Each item is a tuple (features, targets):
