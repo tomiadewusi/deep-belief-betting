@@ -12,7 +12,7 @@ from deep_belief_betting.simulation.parameters import Parameters
 
 
 class PredictionMarketEnv(gym.Env[np.ndarray, int]):
-    """Gymnasium environment for the single roundtrip prediction market problem."""
+    """Gymnasium environment for repeated roundtrip timing in a prediction market."""
 
     metadata = {"render_modes": []}
 

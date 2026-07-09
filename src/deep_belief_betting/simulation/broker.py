@@ -139,7 +139,7 @@ class Broker:
         if self._state is None:
             raise RuntimeError("broker must be reset before use")
         if self._state.has_entered:
-            raise RuntimeError("single roundtrip broker cannot re enter")
+            raise RuntimeError("cannot enter while a live position is open")
 
         signed_trade = self.signed_entry_trade(side)
         gross_cost = self._execution_value(q, signed_trade)

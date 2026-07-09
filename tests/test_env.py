@@ -28,6 +28,9 @@ def test_env_action_mask_changes_after_entry() -> None:
     env = PredictionMarketEnv(params=params, belief_dim=0)
 
     _, info = env.reset(seed=123)
+    assert np.array_equal(info["action_mask"], np.array([1, 0, 0, 0], dtype=np.int8))
+
+    _, _, _, _, info = env.step(0)
     assert np.array_equal(info["action_mask"], np.array([1, 1, 1, 0], dtype=np.int8))
 
     _, _, _, _, info = env.step(1)

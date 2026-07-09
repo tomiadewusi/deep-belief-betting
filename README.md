@@ -9,7 +9,7 @@ The project is built around a clean decomposition:
 2. **Belief pretraining**
    Learn predictive state representations from simulated paths using supervised sequence learning
 3. **Reinforcement learning for roundtrip timing**
-   Solve the control problem of when to enter a YES or NO position and when to exit, under a strict single-roundtrip constraint
+   Solve the control problem of when to enter a YES or NO position, when to exit, and when to re-enter while flat
 
 The core idea is that this is **not just a forecasting problem**. The agent interacts with the market, its trades move the LMSR state, and the value of acting now must be compared against the value of waiting. That makes the problem a **stochastic optimal control problem with nested optimal stopping structure**.
 
@@ -32,17 +32,17 @@ This repo focuses on the **simplest nontrivial version** of that problem:
 - one binary event
 - one agent
 - one fixed-size trade
-- at most one entry
-- at most one exit
-- no re-entry
+- one live position at a time
+- fixed-size entries and exits
+- re-entry after returning flat
 
-That restriction is deliberate. It keeps the problem economically meaningful while making the control structure interpretable and implementable.
+That restriction is deliberate. It keeps the problem economically meaningful while making the control structure interpretable and implementable, while still allowing repeated entry and exit decisions across the episode.
 
 ---
 
 ## problem setup
 
-The project studies a **single-roundtrip betting problem** in a binary LMSR prediction market.
+The project studies a **repeated roundtrip timing problem** in a binary LMSR prediction market.
 
 The agent begins flat and at each decision time can:
 
@@ -101,9 +101,9 @@ Use that predictive representation to decide:
 
 - when to enter
 - which side to enter
-- when to exit
+- when to exit and become eligible to re-enter
 
-This is the main RL problem addressed by the repo.
+This is the main RL problem addressed by the repo. The default environment allows re-entry after an exit, so the policy repeatedly faces the same flat-versus-invested stopping decision until the market resolves.
 
 ### problem 3: richer position management
 
@@ -222,13 +222,13 @@ Action indices:
 - `2` buy NO
 - `3` sell current position
 
-Masks enforce the single-roundtrip structure:
+Masks enforce the position-state structure:
 
 - if flat
   hold, buy YES, buy NO are valid
 - if invested
   hold and sell are valid
-- if dead post-exit state
+- if terminally dead after resolution
   only hold is valid
 
 This keeps the environment mathematically faithful to the stopping structure while staying simple enough for PyTorch and Gym models.
