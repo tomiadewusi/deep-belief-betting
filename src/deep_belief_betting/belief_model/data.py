@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 import yaml
 from torch.utils.data import Dataset
-from model.device import resolve_device
+from deep_belief_betting.belief_model.device import resolve_device
 
 REQUIRED_KEYS = [
     "T", "in_dim",

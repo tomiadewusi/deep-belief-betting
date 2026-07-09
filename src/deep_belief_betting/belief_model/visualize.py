@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from model.model import Architecture3
+from deep_belief_betting.belief_model.model import Architecture3
 
 
 def _pca_2d(z: np.ndarray):

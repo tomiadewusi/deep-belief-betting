@@ -5,9 +5,9 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from model.data import load_config, PriceDataset
-from model.model import Architecture3
-from model.device import resolve_device
+from deep_belief_betting.belief_model.data import load_config, PriceDataset
+from deep_belief_betting.belief_model.model import Architecture3
+from deep_belief_betting.belief_model.device import resolve_device
 
 def train(cfg: SimpleNamespace) -> Architecture3:
     torch.manual_seed(cfg.seed)
@@ -91,7 +91,7 @@ def train(cfg: SimpleNamespace) -> Architecture3:
 
 
 if __name__ == "__main__":
-    cfg_path = Path("config.yaml")
+    cfg_path = Path("configs/config.yaml")
     if not cfg_path.exists():
         raise FileNotFoundError(f"config not found: {cfg_path.resolve()}")
 

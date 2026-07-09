@@ -12,7 +12,7 @@ import torch.optim as optim
 from torch.distributions import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-from model.model import Architecture3
+from deep_belief_betting.belief_model.model import Architecture3
 
 from deep_belief_betting.simulation.env_factory import make_vector_env
 from deep_belief_betting.simulation.parameters import Parameters

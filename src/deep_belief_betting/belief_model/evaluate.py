@@ -8,7 +8,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import torch
 
-from model.model import Architecture3
+from deep_belief_betting.belief_model.model import Architecture3
 from deep_belief_betting.simulation.parameters import Parameters
 from deep_belief_betting.simulation.market_sim import MarketSim
 
